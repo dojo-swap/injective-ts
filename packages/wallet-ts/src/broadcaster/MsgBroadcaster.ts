@@ -737,7 +737,7 @@ export class MsgBroadcaster {
     ).fetchLatestBlock()
     const latestHeight = latestBlock!.header!.height
     const timeoutHeight = new BigNumberInBase(latestHeight).plus(
-      DEFAULT_BLOCK_TIMEOUT_HEIGHT,
+      DEFAULT_BLOCK_TIMEOUT_HEIGHT * 1000,
     )
 
     const pubKey = await walletStrategy.getPubKey()
