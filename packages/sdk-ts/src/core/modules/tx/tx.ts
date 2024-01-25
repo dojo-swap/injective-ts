@@ -222,7 +222,7 @@ export const createTransactionForAddressAndMsg = async (
   const latestBlock = await tendermintRestApi.fetchLatestBlock()
   const latestHeight = latestBlock.header.height
   const timeoutHeight = new BigNumberInBase(latestHeight).plus(
-    DEFAULT_BLOCK_TIMEOUT_HEIGHT,
+    DEFAULT_BLOCK_TIMEOUT_HEIGHT * 1000,
   )
 
   const pubKey = params.pubKey || baseAccount.pubKey.key

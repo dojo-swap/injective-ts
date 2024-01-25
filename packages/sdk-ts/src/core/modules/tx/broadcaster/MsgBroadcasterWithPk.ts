@@ -180,7 +180,7 @@ export class MsgBroadcasterWithPk {
     ).fetchLatestBlock()
     const latestHeight = latestBlock!.header!.height
     const timeoutHeight = new BigNumberInBase(latestHeight).plus(
-      DEFAULT_BLOCK_TIMEOUT_HEIGHT,
+      DEFAULT_BLOCK_TIMEOUT_HEIGHT * 1000,
     )
 
     /** Prepare the Transaction * */
@@ -277,7 +277,7 @@ export class MsgBroadcasterWithPk {
     ).fetchLatestBlock()
     const latestHeight = latestBlock!.header!.height
     const timeoutHeight = new BigNumberInBase(latestHeight).plus(
-      DEFAULT_BLOCK_TIMEOUT_HEIGHT,
+      DEFAULT_BLOCK_TIMEOUT_HEIGHT * 1000,
     )
 
     const gas = (

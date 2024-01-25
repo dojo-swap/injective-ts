@@ -13,8 +13,8 @@ export const getEndpointsFromChainId = (
   switch (chainId) {
     case CosmosChainId.Injective:
       return {
-        rpc: 'https://tm.injective.network',
-        rest: 'https://lcd.injective.network',
+        rpc: 'https://sentry.tm.injective.network',
+        rest: 'https://sentry.lcd.injective.network',
       }
     case TestnetCosmosChainId.Injective:
       return {
@@ -130,6 +130,11 @@ export const getEndpointsFromChainId = (
       return {
         rpc: 'https://rpc.cosmos.directory/kujira',
         rest: 'https://rest.cosmos.directory/kujira',
+      }
+    case CosmosChainId.Wormchain:
+      return {
+        rpc: 'https://rpc.cosmos.directory/gateway',
+        rest: 'https://rest.cosmos.directory/gateway',
       }
     default:
       throw new GeneralException(

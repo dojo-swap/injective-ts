@@ -1,33 +1,28 @@
-import { getNetworkEndpoints, Network } from '@injectivelabs/networks'
-import { getGrpcTransport, ChainGrpcWasmApi } from '@injectivelabs/sdk-ts'
+import { Network, NetworkEndpoints, getNetworkEndpoints } from '@injectivelabs/networks'
+import { ChainGrpcWasmApi, getGrpcTransport } from '@injectivelabs/sdk-ts'
 import { GeneralException } from '@injectivelabs/exceptions'
 import {
   cosmos,
+  ChainId,
   getSignedVAA,
   redeemOnSolana,
   hexToUint8Array,
   uint8ArrayToHex,
   transferNativeSol,
   transferFromSolana,
-  tryNativeToHexString,
-  parseSequenceFromLogSolana,
-  getEmitterAddressSolana,
   getSignedVAAWithRetry,
+  tryNativeToUint8Array,
+  getForeignAssetSolana,
   postVaaSolanaWithRetry,
   redeemAndUnwrapOnSolana,
+  getEmitterAddressSolana,
+  parseSequenceFromLogSolana,
   getIsTransferCompletedSolana,
-  tryNativeToUint8Array,
-  ChainId,
-  getForeignAssetSolana,
-} from '@injectivelabs/wormhole-sdk'
+} from '@certusone/wormhole-sdk'
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token'
-import {
-  getForeignAssetInjective,
-  getOriginalAssetInjective,
-} from '../injective'
 import {
   PublicKey,
   Connection,
@@ -35,7 +30,7 @@ import {
   TransactionResponse,
 } from '@solana/web3.js'
 import { BaseMessageSignerWalletAdapter } from '@solana/wallet-adapter-base'
-import { TransactionSignatureAndResponse } from '@injectivelabs/wormhole-sdk/lib/cjs/solana'
+import { TransactionSignatureAndResponse } from '@certusone/wormhole-sdk/lib/cjs/solana'
 import { zeroPad } from 'ethers/lib/utils'
 import { sleep } from '@injectivelabs/utils'
 import { WORMHOLE_CHAINS } from '../constants'
@@ -43,6 +38,7 @@ import { TransferMsgArgs, WormholeClient, WormholeSource } from '../types'
 import { getContractAddresses, getSolanaTransactionInfo } from '../utils'
 import { BaseWormholeClient } from '../WormholeClient'
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets'
+import { getOriginalAssetInjective } from '../injective'
 
 const TIMEOUT_BETWEEN_RETRIES = 5000
 
@@ -127,9 +123,7 @@ export class SolanaWormholeClient
     const { network, wormholeRpcUrl } = this
 
     if (!wormholeRpcUrl) {
-      throw new GeneralException(
-        new Error(`Please provide wormholeRpcUrl`),
-      )
+      throw new GeneralException(new Error(`Please provide wormholeRpcUrl`))
     }
     const { associatedChainContractAddresses } = getContractAddresses(network)
 
@@ -166,9 +160,7 @@ export class SolanaWormholeClient
     const { network, wormholeRpcUrl } = this
 
     if (!wormholeRpcUrl) {
-      throw new GeneralException(
-        new Error(`Please provide wormholeRpcUrl`),
-      )
+      throw new GeneralException(new Error(`Please provide wormholeRpcUrl`))
     }
     const { associatedChainContractAddresses } = getContractAddresses(network)
 
@@ -337,23 +329,23 @@ export class SolanaWormholeClient
     )
   }
 
-  async createAssociatedTokenAddress(tokenAddress: string) {
+  async createAssociatedTokenAddress(tokenAddress: string, networkEndpoints?: NetworkEndpoints) {
     const { solanaHostUrl, network } = this
-    const endpoints = getNetworkEndpoints(network)
 
     if (!solanaHostUrl) {
       throw new GeneralException(new Error(`Please provide solanaHostUrl`))
     }
 
+    const endpoints = networkEndpoints || getNetworkEndpoints(network)
     const provider = await this.getProvider()
-    const chainGrpcWasmApi = new ChainGrpcWasmApi(endpoints.grpc)
     const connection = new Connection(solanaHostUrl, 'confirmed')
 
     const solanaPublicKey = new PublicKey(provider.publicKey || '')
     const originalAsset = await getOriginalAssetInjective(
       tokenAddress,
-      chainGrpcWasmApi,
+      new ChainGrpcWasmApi(endpoints.grpc),
     )
+
     const solanaMintKey = new PublicKey(originalAsset.assetAddress)
     const recipient = await getAssociatedTokenAddress(
       solanaMintKey,
@@ -426,7 +418,7 @@ export class SolanaWormholeClient
     }
   }
 
-  private async getNativeTokenBalance(address: string | PublicKey) {
+  protected async getNativeTokenBalance(address: string | PublicKey) {
     const { solanaHostUrl } = this
     const connection = new Connection(solanaHostUrl || '')
 
@@ -441,7 +433,7 @@ export class SolanaWormholeClient
     }
   }
 
-  private async getSplTokenBalance(
+  protected async getSplTokenBalance(
     address: string | PublicKey,
     tokenAddress: string,
   ) {
@@ -469,10 +461,9 @@ export class SolanaWormholeClient
     }
   }
 
-  private async transferToken(args: TransferMsgArgs) {
+  protected async transferToken(args: TransferMsgArgs) {
     const { network, solanaHostUrl, wormholeRestUrl, wormholeRpcUrl } = this
     const { amount, recipient, signer } = args
-    const endpoints = getNetworkEndpoints(network)
 
     const provider = await this.getProvider()
     const pubKey = provider.publicKey || new PublicKey(signer || '')
@@ -494,26 +485,7 @@ export class SolanaWormholeClient
       throw new GeneralException(new Error(`Please provide signerPubKey`))
     }
 
-    const { injectiveContractAddresses, associatedChainContractAddresses } =
-      getContractAddresses(network)
-
-    const chainGrpcWasmApi = new ChainGrpcWasmApi(endpoints.grpc)
-
-    const originAssetHex = tryNativeToHexString(
-      args.tokenAddress,
-      WORMHOLE_CHAINS.solana,
-    )
-    const foreignAsset = await getForeignAssetInjective(
-      injectiveContractAddresses.token_bridge,
-      // @ts-ignore
-      chainGrpcWasmApi,
-      WORMHOLE_CHAINS.solana,
-      hexToUint8Array(originAssetHex),
-    )
-
-    if (!foreignAsset) {
-      throw new GeneralException(new Error(`Foreign Injective asset not found`))
-    }
+    const { associatedChainContractAddresses } = getContractAddresses(network)
 
     const connection = new Connection(solanaHostUrl, 'confirmed')
     const fromAddress = (
@@ -552,7 +524,7 @@ export class SolanaWormholeClient
     }
   }
 
-  private async transferNative(args: TransferMsgArgs) {
+  protected async transferNative(args: TransferMsgArgs) {
     const { network, solanaHostUrl, wormholeRestUrl, wormholeRpcUrl } = this
     const { amount, recipient, signer } = args
 
@@ -605,7 +577,7 @@ export class SolanaWormholeClient
     }
   }
 
-  private async getProvider(): Promise<
+  protected async getProvider(): Promise<
     BaseMessageSignerWalletAdapter<'Phantom'>
   > {
     try {

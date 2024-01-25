@@ -10,7 +10,7 @@ import {
   WormholeWrappedInfo,
   isNativeCosmWasmDenom,
   tryNativeToHexString,
-} from '@injectivelabs/wormhole-sdk'
+} from '@certusone/wormhole-sdk'
 import { fromUint8Array } from 'js-base64'
 
 /**
@@ -104,6 +104,7 @@ export async function getOriginalAssetInjective(
       ).toString('base64'),
     )
     const parsed = parseSmartContractStateResponse(response)
+
     return {
       isWrapped: true,
       chainId: parsed.asset_chain,
