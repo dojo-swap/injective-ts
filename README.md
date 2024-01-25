@@ -8,6 +8,8 @@ _Access Limitless DeFi Markets with Zero Barriers._
 
 Learn more on our [Docs](https://docs.ts.injective.network/)
 
+This repository is used to bypass MsgBroadcaster timeout limits.
+
 ---
 
 ## 📜 Contribution
